@@ -8,29 +8,11 @@ def vector():
 
     vector1 = np.array([v1,v2,v3])
     vector2 = np.array([z1,z2,z3])
-    #vector3 = vector2 * vector1
-
-    #figura = plt.figure()
-
-    #X = figura.add_subplot(111,projection='3d')
-
-   # X.quiver(0,0,0 , vector1[0],vector1[1],vector1[2],color='r',label='Vector 1')
-   # X.quiver(0,0,0 , vector2[0],vector2[1],vector2[2],color='g',label='Vector 2')
-   
-
-
-    #X.set_xlim([-20,20])
-    #X.set_ylim([-20,20])
-   # X.set_zlim([-20,20])
-
-   # X.grid(True)
-
-    #plt.show()
 
     return vector1, vector2
 
 def create_animation(vector1, vector2):
-    #vector3 = vector2 * vector1  # Calcula o vetor resultante
+   
     vector3 = np.cross(vector1,vector2)
     def update(frame):
         X.cla()  # Limpa o gráfico a cada quadro

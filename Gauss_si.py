@@ -32,9 +32,9 @@ def gauss_elimination(matrix):
 def main():
     # Matriz estendida [A|B]
     matrix = [
-        [7.0, 5.0, -8.0, 3.0],
-        [-23.0, -7.0, 15.0, -11.0],
-        [-4.0, 3.0, 1.0, -17.0]
+        [1 ,-1, 1, 0],
+        [2, -1, 4, 0],
+        [3, 1, 11, 0]
     ]
 
     print("Matriz original:")
