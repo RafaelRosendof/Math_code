@@ -88,3 +88,40 @@ with torch.no_grad(): #desativando o cálculo dos gradientes durante a avaliaç�
         correto += (predicted == labels).sum().item()#Incrementando o contador de previsões 
 accuracy = correto / total #acurácia?
 print(f"Resultado final, afinal? Quanto que deu mesmo?: {accuracy:.4f}")    
+
+
+'''
+Algoritmo: Pipeline de Treinamento de uma Rede Neural
+
+Entrada: 
+    - Conjunto de treinamento (dados de entrada e rótulos)
+    - Conjunto de validação (opcional)
+    - Modelo de rede neural
+    - Função de perda
+    - Otimizador
+    - Número de épocas
+    - Dispositivo de computação (CPU ou GPU)
+
+Saída:
+    - Modelo treinado
+
+Passos:
+1. Para cada época no número total de épocas:
+    1.1. Coloque o modelo em modo de treinamento.
+    1.2. Inicialize a perda acumulada para a época como zero.
+    1.3. Para cada lote no conjunto de treinamento:
+        1.3.1. Zere os gradientes do otimizador.
+        1.3.2. Propague os dados de entrada através do modelo para obter as previsões.
+        1.3.3. Calcule a perda entre as previsões e os rótulos usando a função de perda.
+        1.3.4. Retropropague os gradientes da perda.
+        1.3.5. Atualize os pesos do modelo usando o otimizador.
+        1.3.6. Adicione a perda do lote à perda acumulada da época.
+    1.4. Calcule a perda média da época dividindo a perda acumulada pelo número de lotes.
+    1.5. Se houver um conjunto de validação:
+        1.5.1. Avalie o modelo no conjunto de validação.
+        1.5.2. Registre a métrica de desempenho (por exemplo, acurácia) no conjunto de validação.
+    1.6. Imprima a perda média da época e, se aplicável, a métrica de desempenho no conjunto de validação.
+2. Após todas as épocas, retorne o modelo treinado.
+
+
+'''
