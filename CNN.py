@@ -48,7 +48,7 @@ model = CNN()
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 model.to(device) #modelo na gpu
 #tem mais de uma GPU?
-if torch.cuda.device_count() > 1:
+if torch.cuda.device_count() > 1: #testando
     print("Usando",torch.cuda.device_count(),"GPU's!!!!!!!")
     model = nn.DataParallel(model , device_ids=[0,1,2])
 
