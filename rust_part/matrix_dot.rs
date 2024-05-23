@@ -14,6 +14,7 @@ fn Matrix_dot(matA: Vec<Vec<i32>> , matB: Vec<Vec<i32>>) -> Vec<Vec<i32>>{
     for i in 0..cols_a{
         for ii in 0..cols_b{
             for iii in 0..cols_a{
+                
                 resultado[i][ii] += matA[i][iii] * matB[iii][ii];
             } 
         }
@@ -40,6 +41,8 @@ fn main(){
     input.clear();
     io::stdin().read_line(&mut input).expect("falhou em ler ");
     let d: usize = input.trim().parse().expect("Entrada inválida");
+
+    
 
     let mut matA = vec![vec![0;s];n];
     let mut matB = vec![vec![0;d];s];
