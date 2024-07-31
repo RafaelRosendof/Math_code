@@ -1,5 +1,8 @@
 import pygame
 import math
+import requests
+from io import BytesIO
+import os
 pygame.init() #imports and the initialization of the pygame module
 
 WIDTH, HEIGHT =  800, 800 #size of the window
@@ -20,12 +23,13 @@ class Planet:
 	SCALE = 200 / AU  # 1AU = 100 pixels
 	TIMESTEP = 3600*24 # 1 day
 
-	def __init__(self, x, y, radius, color, mass): #planet constructor
+	def __init__(self, x, y, radius, color, mass, image=None): #planet constructor
 		self.x = x
 		self.y = y
 		self.radius = radius #init the radius and all the other parameters
 		self.color = color
 		self.mass = mass
+		self.image = image
 
 		self.orbit = []
 		self.sun = False #to not put the orbit of the sun 
@@ -47,8 +51,14 @@ class Planet:
 				updated_points.append((x, y))
 
 			pygame.draw.lines(win, self.color, False, updated_points, 2)
-
-		pygame.draw.circle(win, self.color, (x, y), self.radius)
+   
+		if self.image:
+			image = pygame.transform.scale(self.image, (self.radius * 2, self.radius * 2))
+			win.blit(image, (x - self.radius, y - self.radius))
+		else:
+			pygame.draw.circle(win, self.color, (x, y), self.radius)
+        
+		#pygame.draw.circle(win, self.color, (x, y), self.radius)
 		
 		if not self.sun:
 			distance_text = FONT.render(f"{round(self.distance_to_sun/1000, 1)}km", 1, WHITE)
@@ -87,11 +97,28 @@ class Planet:
 		self.orbit.append((self.x, self.y)) #increase the position
 
 
+def load_image_from_file(filepath):
+    if os.path.exists(filepath):
+        image = pygame.image.load(filepath)
+        if image:
+            print("Image loaded successfully.")
+            return image
+        else:
+            print("Failed to load image.")
+            return None
+    else:
+        print(f"File '{filepath}' does not exist.")
+        return None
+
+    
 def main():
 	run = True
 	clock = pygame.time.Clock()
 
-	sun = Planet(0, 0, 30, YELLOW, 1.98892 * 10**30)
+	sol = "/home/rafael/Downloads/teste.jpeg"
+	sun_image = load_image_from_file(sol)
+
+	sun = Planet(0, 0, 30, YELLOW, 1.98892 * 10**30,sun_image)
 	sun.sun = True
 
 	earth = Planet(-1 * Planet.AU, 0, 16, BLUE, 5.9742 * 10**24)

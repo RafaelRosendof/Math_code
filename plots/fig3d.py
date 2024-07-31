@@ -1,57 +1,38 @@
 import numpy as np
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
+from PIL import Image
 
+def image_to_height_map(image_path, scale_factor=0.1):
+    # Load the image and convert it to grayscale
+    image = Image.open(image_path).convert('L')
+    # Get the image data as a numpy array
+    image_array = np.array(image)
+    # Invert the image (bright pixels become high points)
+    image_array = 255 - image_array
+    # Scale the image to the desired size
+    scaled_image_array = image_array * scale_factor
+    return scaled_image_array
 
-
-def cone():
-    # Cria uma grade de pontos no espaço tridimensional
-    phi = np.linspace(0, 2 * np.pi, 100)
-    z = np.linspace(0, 5, 100)
-    PHI, Z = np.meshgrid(phi, z)
-
-# Calcula as coordenadas x, y e z de um cone
-    X = Z * np.cos(PHI)
-    Y = Z * np.sin(PHI)
-                                #melhorar o código para entrar uma função 
-# Cria um gráfico 3D
-    fig = plt.figure()
-    ax = fig.add_subplot(111, projection='3d')
-
-# Plota a superfície do cone
-    ax.plot_surface(X, Y, Z, cmap='viridis')
-
-# Exibe o gráfico
-    plt.show()
-
-def paraboloide():
-    # Cria uma grade de pontos no espaço tridimensional
-    x = np.linspace(-5, 5, 100)
-    y = np.linspace(-5, 5, 100)
+def print_image_in_3d(image_path):
+    # Convert the image to a height map
+    height_map = image_to_height_map(image_path)
+    # Create x and y coordinates
+    x = np.linspace(0, height_map.shape[1], height_map.shape[1])
+    y = np.linspace(0, height_map.shape[0], height_map.shape[0])
     X, Y = np.meshgrid(x, y)
-
-# Calcula a altura do paraboloide em cada ponto da grade
-    Z = X**2 + Y**2
-
-# Cria um gráfico 3D
+    # Create a 3D plot
     fig = plt.figure()
     ax = fig.add_subplot(111, projection='3d')
-
-# Plota a superfície do paraboloide
-    ax.plot_surface(X, Y, Z, cmap='viridis')
-
-# Exibe o gráfico
+    # Plot the surface
+    ax.plot_surface(X, Y, height_map, cmap='gray', rstride=1, cstride=1)
+    # Show the plot
     plt.show()
 
 def main():
-    print("Escolha qual o gráfico 1 para cone 2 para paraboloide: ")
-    escolha = input()
-    
-    if escolha == '1':
-        cone()
-    else:
-        paraboloide()
+   # print("Enter the path to the image file:")
+   # image_path = input().strip()
+    print_image_in_3d("/home/rafael/Math_code/plots/nosso_polaroid.jpg")
 
 if __name__ == "__main__":
-
     main()

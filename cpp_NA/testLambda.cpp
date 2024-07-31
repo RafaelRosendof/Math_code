@@ -95,10 +95,3 @@ int main(){
     std::cout<< "Trapezoidal Rule\n" << std::setprecision(precision) << res2 << std::endl;
 }
 
-/*
-Boole method
-Adaptive Quadrature
-Monte carlo integration
-Romberg Integration
-Newton Cotes 
-*/

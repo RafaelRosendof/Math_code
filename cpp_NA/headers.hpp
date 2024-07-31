@@ -77,21 +77,21 @@ class Calculus{
     public:
     //this is functional methods for passing the functions to the calculus methods
     double NewtonCotes(std::function<double(double)> f, double a , double b , int n);
-    double GaussLegendre(std::function<double(double)> f, double a , double b , int n);
-    double GaussTchebyshev(std::function<double(double)> f, double a , double b , int n);
-    double GaussLaguerre(std::function<double(double)> f , int n);
-    double GaussHermite(std::function<double(double)> f , int n);
     double RombergIntegration(std::function<double(double)> f, double a , double b , int max_steps, double tol);
-    double TrapezoidalRule(std::function<double(double)> f, double a , double b , int n);
-    double SimpsonsRule(std::function<double(double)> f, double a , double b , int n);
+    double TrapezoidalRule(std::function<double(double)> f, double a , double b , int n , double tolerance);
     double SimpsonsRule38(std::function<double(double)> f, double a , double b , int n);
     double SimpsonsRule13(std::function<double(double)> f, double a , double b , int n);
     double HighAccuracyDifferentiation(std::function<double(double)> f, double x , double h);
     double RichardsonExtrapolation(std::function<double(double)> f, double x , double h , int n);
     double PartialDerivatives(std::function<double(double, double)> f, double x, double y, int var, double h);
-    
-    double MeanSquare(); //Otimization
+    double booleMethod(std::function<double(double)> f, double a , double b , int n);
+    double AdaptiveQuadrature(std::function<double(double)> f, double a , double b , double tol);
+    double MonteCarloIntegration(std::function<double(double)> f, double a , double b , int n);
+    double 
+    //double MeanSquare(); //Otimization
+    //otimization: TODO 
 };
+
 
 
 //class Calculus Todo()!
@@ -135,5 +135,61 @@ class Algebra{
     double newtonRaphson();
 
 };
+
+/*
+
+EiginValues{
+    Power Method
+    Inverse Power Method
+    QR Method
+    Jacobi Method
+    Rayleigh Quotient
+}
+
+autovalores: TODO
+
+ODE{
+    Euler
+    Runge-Kutta
+    Adams-Bashforth
+    Adams-Moulton
+    Backward Differentiation
+    Predictor-Corrector
+    Finite Difference
+    Finite Element
+    Boundary Element
+    Spectral Methods
+    Galerkin
+    Collocation
+    Least Squares
+    Finite Volume
+    }
+
+ODE: TODO
+
+PDE{
+    Finite Difference
+    Finite Element
+    Boundary Element
+    Spectral Methods
+    Galerkin
+    Collocation
+    Least Squares
+    Finite Volume
+}
+
+PDE: TODO
+
+Fourrier transform{
+    FFT
+    DFT
+    IDFT
+    FFT2D
+    DFT2D
+    IDFT2D
+}
+
+
+*/
 
 #endif

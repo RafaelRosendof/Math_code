@@ -23,7 +23,7 @@ double trapezoidal_rule_omp(double a, double b, int n) {
 int main() {
     double a = 2;
     double b = 100;
-    int n = 1000000; // Aumentar o número de subintervalos para maior precisão
+    int n = 2100000000; // Aumentar o número de subintervalos para maior precisão
 
     double integral = trapezoidal_rule_omp(a, b, n);
     
