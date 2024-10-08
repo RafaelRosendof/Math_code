@@ -32,9 +32,10 @@ def print_image_in_3d(image_path):
 def main():
    # print("Enter the path to the image file:")
    # image_path = input().strip()
-    print_image_in_3d("/home/rafael/Pictures/nossa2.jpg")
+    #print_image_in_3d("/home/rafael/Desktop/nossa.jpg")
     #print_image_in_3d("/home/rafael/Desktop/nossa2.jpg")
     #print_image_in_3d("/home/rafael/Desktop/nossa3.jpg")
+    print_image_in_3d("/home/rafael/Desktop/ela.jpg")
 
 if __name__ == "__main__":
     main()

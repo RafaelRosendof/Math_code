@@ -4,6 +4,7 @@ import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.util.stream.IntStream;
 import java.math.MathContext;
+
 public class IntegralStream{
 
     public static void main(String[] args){
@@ -29,25 +30,35 @@ public class IntegralStream{
         //metodo do trapézio considerando a diferença entre dois trapezios sucessivos
         // sendo o criterio de parada o erro
         //fazer com o parallelStream
+
+        long inicio = System.nanoTime();
         MathContext mc = new MathContext(30 , RoundingMode.HALF_EVEN);
 
-        BigDecimal integral = trapezioJadna(f , a , b , n , tol , mc);
-        System.out.println("Jadna meu amor, o valor que você calculou é: " + integral);
+        BigDecimal integral = trapezios(f , a , b , n , tol , mc);
+        
+        long fim = System.nanoTime();
+
+        long durou = (fim - inicio) / 1_000_000;
+
+        let.close();
+        System.out.println("O valor da INTEGRAL É : " + integral);
+
+        System.out.println("Tempo de duração: " + durou + "ms");
     }
 
-    public static BigDecimal trapezioJadna(Function<BigDecimal , BigDecimal> f , BigDecimal a , BigDecimal b , int n , BigDecimal tol , MathContext mc){
+    public static BigDecimal trapezios(Function<BigDecimal , BigDecimal> f , BigDecimal a , BigDecimal b , int n , BigDecimal tol , MathContext mc){
         BigDecimal previo = BigDecimal.ZERO;
-        BigDecimal atual = calculoJadna(f , a , b , n , mc);
+        BigDecimal atual = calculo(f , a , b , n , mc);
 
         while(atual.subtract(previo).abs().compareTo(tol) > 0){
             n = n * 2;
             previo = atual;
-            atual = calculoJadna(f , a , b , n , mc);
+            atual = calculo(f , a , b , n , mc);
         }
         return atual;
     }
 
-    public static BigDecimal calculoJadna(Function<BigDecimal , BigDecimal> f , BigDecimal a , BigDecimal b , int n , MathContext mc){
+    public static BigDecimal calculo(Function<BigDecimal , BigDecimal> f , BigDecimal a , BigDecimal b , int n , MathContext mc){
         BigDecimal h = b.subtract(a).divide(BigDecimal.valueOf(n) , mc);
 
         BigDecimal sum = IntStream.range(1 , n).parallel().mapToObj(i -> f.apply(a.add(BigDecimal.valueOf(i).multiply(h , mc))))
