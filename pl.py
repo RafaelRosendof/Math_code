@@ -4,8 +4,9 @@ from torchvision.transforms import ToTensor
 import lightning as L 
 import os 
 
-encoder = nn.Sequential(nn.Linear(28 * 28 , 64) nn.Relu() , nn.Linear(64,3))
-decode = nn.Sequential(nn.Linear(28 * 28 , 64) nn.Relu() , nn.Linear(64,3))
+encoder = nn.Sequential(nn.Linear(28 * 28 , 64), nn.Relu() , nn.Linear(64,3))
+#decode = nn.Sequential(nn.Linear(28 * 28 , 64) nn.Relu() , nn.Linear(64,3))
+decode = nn.Sequential(nn.Linear(3 , 64) , nn.ReLU() , nn.Linear(64 , 28 * 28))
 
 class LitEncoder(L.LightningModule):
     def __init__(self , encoder , decoder):
@@ -38,7 +39,7 @@ autoencoder = LitEncoder(encoder , decode)
 data = MNIST(os.getcwd() , download=True , transform=ToTensor())
 train_loader = utils.data.DataLoader(data)
 
-trainer = L.Trainer(limit_train_batches=1000 , max_epochs=1200)
+trainer = L.Trainer(limit_train_batches=10 , max_epochs=1200)
 
 trainer.fit(model = autoencoder , train_dataloaders=train_loader)
 
