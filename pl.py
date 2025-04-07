@@ -2,9 +2,10 @@ from torch import optim , nn , utils , Tensor
 from torchvision.datasets import MNIST 
 from torchvision.transforms import ToTensor 
 import lightning as L 
+import torch
 import os 
 
-encoder = nn.Sequential(nn.Linear(28 * 28 , 64), nn.Relu() , nn.Linear(64,3))
+encoder = nn.Sequential(nn.Linear(28 * 28 , 64), nn.ReLU() , nn.Linear(64,3))
 #decode = nn.Sequential(nn.Linear(28 * 28 , 64) nn.Relu() , nn.Linear(64,3))
 decode = nn.Sequential(nn.Linear(3 , 64) , nn.ReLU() , nn.Linear(64 , 28 * 28))
 
@@ -29,7 +30,7 @@ class LitEncoder(L.LightningModule):
         return loss 
     
     
-    def config_optim(self):
+    def configure_optimizers(self):
         optimi = optim.Adam(self.parameters() , lr=1e-2)
         return optimi
     
@@ -39,7 +40,24 @@ autoencoder = LitEncoder(encoder , decode)
 data = MNIST(os.getcwd() , download=True , transform=ToTensor())
 train_loader = utils.data.DataLoader(data)
 
-trainer = L.Trainer(limit_train_batches=10 , max_epochs=1200)
+trainer = L.Trainer(limit_train_batches=10 , max_epochs=120)
 
 trainer.fit(model = autoencoder , train_dataloaders=train_loader)
+
+checkpoint = "checks.ckpt"
+
+trainer.save_checkpoint(checkpoint)
+ 
+
+
+autoencoder = LitEncoder.load_from_checkpoint(checkpoint, encoder=encoder, decoder=decode)
+
+# choose your trained nn.Module
+encoder = autoencoder.encoder
+encoder.eval()
+
+# embed 4 fake images!
+fake_image_batch = torch.rand(4, 28 * 28, device=autoencoder.device)
+embeddings = encoder(fake_image_batch)
+print("⚡" * 20, "\nPredictions (4 image embeddings):\n", embeddings, "\n", "⚡" * 20)
 
