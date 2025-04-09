@@ -42,7 +42,16 @@ autoencoder = LitEncoder(encoder , decode)
 data = MNIST(os.getcwd() , download=True , transform=ToTensor())
 train_loader = utils.data.DataLoader(data)
 
-trainer = L.Trainer(limit_train_batches=10 , max_epochs=120)
+trainer = L.Trainer(limit_train_batches=10 , 
+                    max_epochs=120,
+                    overfit_batches=1,
+                    min_epochs=5,
+                    precision=32,
+                    accelerator="gpu",
+                    )
+
+#strategy = fsdp or deepspeed_stage_2" 
+#devices= 4 or other one 
 
 trainer.fit(model = autoencoder , train_dataloaders=train_loader)
 
