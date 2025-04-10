@@ -1,27 +1,16 @@
-import pandas as pd 
+import pandas as pd
 import re
-from tqdm import tqdm 
+from tqdm import tqdm
 import torch
-from transformers import AutoTokenizer, AutoModelForSequenceClassification
-from torch.nn.functional import softmax
+from torch import nn
+import torch.nn.functional as F
+import lightning as L
+from transformers import AutoTokenizer, AutoModel, AdamW
 from torch.utils.data import Dataset, DataLoader
 from sklearn.model_selection import train_test_split
-import numpy as np 
+import numpy as np
+from sklearn.metrics import accuracy_score, f1_score
 
-
-train_df = pd.read_csv("path")
-test_df = pd.read_csv("path")
-
-sentiment_map = {
-    "Extremely Negative": "Negative",
-    "Negative": "Negative",
-    "Neutral": "Neutral",
-    "Positive": "Positive",
-    "Extremely Positive": "Positive"
-}
-
-train_df["Sentiment"] = train_df["Sentiment"].map(sentiment_map)
-test_df["Sentiment"] = test_df["Sentiment"].map(sentiment_map)
 
 def clean_text(text):
     text = text.lower()  # Convert text to lowercase
@@ -32,53 +21,315 @@ def clean_text(text):
     text = re.sub(r"\s+", " ", text).strip()  # Remove extra spaces
     return text
 
-train_df["clean_text"] = train_df["OriginalTweet"].apply(clean_text)
-test_df["clean_text"] = test_df["OriginalTweet"].apply(clean_text)
 
-# Label encoding: map sentiments to numeric values
-sentiment_mapping = {
-    "Negative": 0,
-    "Neutral": 1,
-    "Positive": 2
+sentiment_map = {
+    "Extremely Negative": "Negative",
+    "Negative": "Negative",
+    "Neutral": "Neutral",
+    "Positive": "Positive",
+    "Extremely Positive": "Positive"
 }
-
-train_df["label"] = train_df["Sentiment"].map(sentiment_mapping)
-test_df["label"] = test_df["Sentiment"].map(sentiment_mapping)
-
-X = train_df["clean_text"]
-Y = train_df["label"]
-
-X_train , X_val , y_train , y_val = train_test_split(
-    X , Y , test_size=0.2 , random_state=40 , stratify=Y
-)
-
-tokenizer = AutoTokenizer.from_pretrained("google-bert/bert-base-cased")
-model = AutoModelForSequenceClassification.from_pretrained("google-bert/bert-base-cased")
 
 
 class MyData(Dataset):
-    def __init__(self , texts , labels, tokenizer , max_len):
-        self.encoding = tokenizer(
+    def __init__(self , texto , labels , tokenizer , max_len):
+        self.texto = texto
+        self.labels = labels
+        self.tokenizer = tokenizer
+        self.max_len = max_len
+        
+    def __len__(self):
+        return len(self.labels)
+
+    def __getitem__(self, index):
+        
+        texto = str(self.texto[index])
+        label = self.labels[index]
+        
+        encoding = self.tokenizer(
+            texto,
             truncation=True,
-            padding=True,
-            max_length=max_len,
+            padding='max_length',
             return_tensors='pt'
         )
         
-        self.labels = labels 
-    
-    def __getitem__(self, index):
-        item = {key: val[index] for key , val in self.encoding.items()}
+        return {
+            'input_ids': encoding['input_ids'].flatten(),
+            'attention_mask': encoding['attention_mask'].flatten(),
+            'labels': torch.tensor(label, dtype=torch.long)
+        }
         
-        item['labels'] = torch.tensor(self.labels[index])
         
-        return item 
+        
+class SentimentalModule(L.LightningDataModule):
+    def __init__(self, train_df_path , test_df_path , batch_size=32 , max_len=128, num_workers=4):
+        self.train_df_path = train_df_path
+        self.test_df_path = test_df_path
+        self.batch_size = batch_size
+        self.max_len = max_len
+        self.num_workers = num_workers
+        self.tokenizer = AutoTokenizer.from_pretrained("bert-base-cased")
+        self.prepare_data_per_node = True
+        self.allow_zero_length_dataloader_with_multiple_devices = False
+        self._log_hyperparams = False
+        
+    def prepare_data(self):
+        pass 
     
-    def __len__(self):
-        return len(self.labels)
-    
-train_dataset = MyData(X_train.tolist() , y_train.tolist() , tokenizer , 128)
-val_dataset = MyData(X_val.tolist() , y_val.tolist() , tokenizer , 128)
+    def setup(self , stage=None):
+        train_df = pd.read_csv(self.train_df_path, encoding='latin')
+        test_df = pd.read_csv(self.test_df_path ,encoding='latin')
 
-train_loader = DataLoader(train_dataset, batch_size=32, shuffle=True)
-val_loader   = DataLoader(val_dataset, batch_size=32)
+        sentiment_map = {
+            "Extremely Negative": "Negative",
+            "Negative": "Negative",
+            "Neutral": "Neutral",
+            "Positive": "Positive",
+            "Extremely Positive": "Positive"
+        }
+        
+        train_df["Sentiment"] = train_df["Sentiment"].map(sentiment_map)
+        test_df["Sentiment"] = test_df["Sentiment"].map(sentiment_map)
+        
+        #limpando 
+        train_df["clean_text"] = train_df["OriginalTweet"].apply(clean_text)
+        test_df["clean_text"] = test_df["OriginalTweet"].apply(clean_text)
+        
+        #tabelando rotulos
+        sentiment_mapping = {
+            "Negative": 0,
+            "Neutral": 1,
+            "Positive": 2
+        }
+        
+        train_df["labels"] = train_df["Sentiment"].map(sentiment_mapping)
+        test_df["labels"] = test_df["Sentiment"].map(sentiment_mapping)
+        
+        if stage == 'fit' or stage is None:
+            X = train_df["clean_text"]
+            Y = train_df["labels"]
+            
+            X_train, X_val, y_train, y_val = train_test_split(
+                X, Y, test_size=0.2, random_state=40, stratify=Y
+            )
+            
+            self.train_dataset = MyData(
+                X_train.tolist(),
+                y_train.tolist(),
+                self.tokenizer,
+                self.max_len
+            )
+            
+            self.val_dataset = MyData(
+                X_val.tolist(),
+                y_val.tolist(),
+                self.tokenizer,
+                self.max_len
+            )
+            
+        if stage == 'test' or stage is None:
+            self.test_dataset = MyData(
+                test_df["clean_text"].tolist(),
+                test_df["labels"].tolist(),
+                self.tokenizer,
+                self.max_len
+            )
+            
+    def train_dataloader(self):
+        return DataLoader(
+            self.train_dataset,
+            batch_size=self.batch_size,
+            shuffle=True,
+            num_workers=self.num_workers
+        )
+    
+    def val_dataloader(self):
+        return DataLoader(
+            self.val_dataset,
+            batch_size=self.batch_size,
+            num_workers=self.num_workers
+        )
+    
+    def test_dataloader(self):
+        return DataLoader(
+            self.test_dataset,
+            batch_size=self.batch_size,
+            num_workers=self.num_workers
+        )       
+
+
+class BERTSentimentClassifier(L.LightningModule):
+    def __init__(self, n_classes=3, learning_rate=2e-5):
+        super().__init__()
+        self.n_classes = n_classes
+        self.learning_rate = learning_rate
+
+        
+        # Load pre-trained BERT model
+        self.bert = AutoModel.from_pretrained("bert-base-cased")
+        # Dropout layer
+        self.dropout = nn.Dropout(0.3)
+        # Classification head
+        self.classifier = nn.Linear(self.bert.config.hidden_size, n_classes)
+        
+        # Save hyperparameters
+        self.save_hyperparameters()
+        self.validation_step_outputs = []
+        self.test_step_outputs = []
+    
+    def forward(self, input_ids, attention_mask):
+        # Get BERT outputs
+        outputs = self.bert(input_ids=input_ids, attention_mask=attention_mask)
+        # Use the [CLS] token representation for classification
+        pooled_output = outputs.pooler_output
+        # Apply dropout
+        pooled_output = self.dropout(pooled_output)
+        # Pass through classifier
+        return self.classifier(pooled_output)
+
+    def training_step(self, batch, batch_idx):
+        input_ids = batch['input_ids']
+        attention_mask = batch['attention_mask']
+        labels = batch['labels']
+        
+        logits = self(input_ids, attention_mask)
+        loss = F.cross_entropy(logits, labels)
+        
+        # Log training metrics
+        preds = torch.argmax(logits, dim=1)
+        acc = (preds == labels).float().mean()
+        
+        self.log('train_loss', loss, prog_bar=True)
+        self.log('train_acc', acc, prog_bar=True)
+        
+        return loss
+    
+    def validation_step(self, batch, batch_idx):
+        input_ids = batch['input_ids']
+        attention_mask = batch['attention_mask']
+        labels = batch['labels']
+        
+        logits = self(input_ids, attention_mask)
+        loss = F.cross_entropy(logits, labels)
+        
+        # Log validation metrics
+        preds = torch.argmax(logits, dim=1)
+        acc = (preds == labels).float().mean()
+        
+        self.log('val_loss', loss, prog_bar=True)
+        self.log('val_acc', acc, prog_bar=True)
+        
+        self.validation_step_outputs.append({'val_loss': loss, 'preds': preds, 'labels': labels})
+        
+        return {'val_loss': loss, 'preds': preds, 'labels': labels}
+    
+    def on_validation_epoch_end(self):
+        # Aggregate predictions and calculate F1 score
+        preds = torch.cat([x['preds'] for x in self.validation_step_outputs])
+        labels = torch.cat([x['labels'] for x in self.validation_step_outputs])
+        
+        preds_np = preds.cpu().numpy()
+        labels_np = labels.cpu().numpy()
+        
+        # Calculate F1 score (weighted for imbalanced classes)
+        f1 = f1_score(labels_np, preds_np, average='weighted')
+        self.log('val_f1', f1, prog_bar=True)
+        
+        self.validation_step_outputs.clear()
+    
+    def test_step(self, batch, batch_idx):
+        input_ids = batch['input_ids']
+        attention_mask = batch['attention_mask']
+        labels = batch['labels']
+        
+        logits = self(input_ids, attention_mask)
+        loss = F.cross_entropy(logits, labels)
+        
+        # Log test metrics
+        preds = torch.argmax(logits, dim=1)
+        acc = (preds == labels).float().mean()
+        
+        self.log('test_loss', loss, prog_bar=True)
+        self.log('test_acc', acc, prog_bar=True)
+        
+        self.test_step_outputs.append({'test_loss': loss, 'preds': preds, 'labels': labels})
+        
+        return {'test_loss': loss, 'preds': preds, 'labels': labels}
+    
+    def test_epoch_end(self, outputs):
+        # Aggregate predictions and calculate F1 score
+        preds = torch.cat([x['preds'] for x in self.test_step_outputs])
+        labels = torch.cat([x['labels'] for x in self.test_step_outputs])
+        
+        preds_np = preds.cpu().numpy()
+        labels_np = labels.cpu().numpy()
+        
+        # Calculate F1 score (weighted for imbalanced classes)
+        f1 = f1_score(labels_np, preds_np, average='weighted')
+        self.log('test_f1', f1, prog_bar=True)
+        
+        self.test_step_outputs.clear()
+    
+    def configure_optimizers(self):
+        # Use AdamW optimizer as recommended for BERT
+        optimizer = AdamW(self.parameters(), lr=self.learning_rate)
+        
+        # Learning rate scheduler with linear warmup and decay
+        scheduler = torch.optim.lr_scheduler.OneCycleLR(
+            optimizer,
+            max_lr=self.learning_rate,
+            total_steps=self.trainer.estimated_stepping_batches,
+            pct_start=0.1  # 10% of training for warmup
+        )
+        
+        return {
+            "optimizer": optimizer,
+            "lr_scheduler": {
+                "scheduler": scheduler,
+                "interval": "step"
+            }
+        }
+
+
+def main():
+    train_ph = "Corona_NLP_train.csv"
+    test_ph = "Corona_NLP_test.csv"
+    
+    data_module = SentimentalModule(
+        train_df_path=train_ph,
+        test_df_path=test_ph,
+        batch_size=32,
+        max_len=128
+    )
+    
+    model = BERTSentimentClassifier(n_classes=3, learning_rate=2e-5)
+    
+    trainer = L.Trainer(
+        max_epochs=4,
+        accelerator="gpu", 
+        devices=1,
+        precision="32",  
+        callbacks=[
+            L.pytorch.callbacks.ModelCheckpoint(
+                monitor="val_f1",
+                mode="max",
+                save_top_k=1,
+                filename="{epoch}-{val_f1:.2f}"
+            ),
+            L.pytorch.callbacks.EarlyStopping(
+                monitor="val_f1",
+                patience=2,
+                mode="max"
+            )
+        ]
+    )
+    
+    # Train the model
+    trainer.fit(model, data_module)
+    
+    # Test the model
+    trainer.test(model, data_module)
+
+if __name__ == "__main__":
+    main()
+    
