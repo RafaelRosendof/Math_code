@@ -157,7 +157,6 @@ class SentimentalModule(L.LightningDataModule):
             num_workers=self.num_workers
         )       
 
-
 class BERTSentimentClassifier(L.LightningModule):
     def __init__(self, n_classes=3, learning_rate=2e-5):
         super().__init__()
@@ -291,57 +290,11 @@ class BERTSentimentClassifier(L.LightningModule):
         }
 
 
-def main():
-    train_ph = "Corona_NLP_train.csv"
-    test_ph = "Corona_NLP_test.csv"
-    
-    data_module = SentimentalModule(
-        train_df_path=train_ph,
-        test_df_path=test_ph,
-        batch_size=16,
-        max_len=128
-    )
-    
-    model = BERTSentimentClassifier(n_classes=3, learning_rate=2e-5)
-    
-    trainer = L.Trainer(
-        max_epochs=1,
-        accelerator="gpu", 
-        devices=2,
-        strategy="fsdp",
-        precision="32",  
-        callbacks=[
-            L.pytorch.callbacks.ModelCheckpoint(
-                monitor="val_f1",
-                mode="max",
-                save_top_k=1,
-                filename="{epoch}-{val_f1:.2f}"
-            ),
-            L.pytorch.callbacks.EarlyStopping(
-                monitor="val_f1",
-                patience=4,
-                mode="max"
-            )
-        ]
-    )
-    
-    test_trainer = L.Trainer(
-        accelerator="gpu",
-        devices=1,
-        precision="32"
-    )
-    
-    # Train the model
-    trainer.fit(model, data_module)
-    
-    trainer.save_checkpoint("best_model.ckpt")
-    
-    test_model = BERTSentimentClassifier.load_from_checkpoint("best_model.ckpt")
-    
-    test_trainer.test(test_model, data_module)
-    
-def inference(model , tokenizer , text):
+def inference(model, tokenizer, text):
     model.eval()
+    # Convert inputs to appropriate device
+    device = next(model.parameters()).device
+    
     inputs = tokenizer(
         text,
         return_tensors="pt",
@@ -350,22 +303,42 @@ def inference(model , tokenizer , text):
         max_length=128
     )
     
+    # Move inputs to the same device as the model
+    input_ids = inputs['input_ids'].to(device)
+    attention_mask = inputs['attention_mask'].to(device)
+    
     with torch.no_grad():
-        outputs = model(**inputs)
-        logits = outputs.logits
+        # Your forward method expects separate input_ids and attention_mask
+        logits = model(input_ids, attention_mask)
         predictions = torch.argmax(logits, dim=1)
         
-    return predictions.item()
+    # Map numerical predictions back to sentiment labels
+    sentiment_labels = {0: "Negative", 1: "Neutral", 2: "Positive"}
+    sentiment = sentiment_labels[predictions.item()]
+    
+    return {'prediction': predictions.item(), 'sentiment': sentiment}
 
 if __name__ == "__main__":
-    main()
-    
-# Inference example
-# Load the tokenizer and model
     model = BERTSentimentClassifier.load_from_checkpoint("best_model.ckpt")
     tokenizer = AutoTokenizer.from_pretrained("bert-base-cased")
-    text = "I love this product! It's amazing." 
-    text2 = "Olá meu amigo eu me chamo Rafael e eu gosto de cerejas"
     
-    inference(model , tokenizer , text)
-    inference(model , tokenizer , text2)
+    # Move model to GPU if available
+    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+    model = model.to(device)
+    
+    text = "I love this product! It's amazing."
+    text2 = "Olá meu amigo eu me chamo Rafael e eu gosto de cerejas"
+    #text3 = "Esse vagabundo não entende nada, vá catar coquinho"
+    text3 = "I hate you, get the fuck off here you peace of shiet"
+    result1 = inference(model, tokenizer, text)
+    result2 = inference(model, tokenizer, text2)
+    res3 = inference(model, tokenizer, text3)
+    
+    print(f"Text 1: '{text}'")
+    print(f"Prediction: {result1['prediction']} - Sentiment: {result1['sentiment']}")
+    
+    print(f"\nText 2: '{text2}'")
+    print(f"Prediction: {result2['prediction']} - Sentiment: {result2['sentiment']}")
+
+    print(f"\nText 3: '{text3}'")
+    print(f"Prediction: {res3['prediction']} - Sentiment: {res3['sentiment']}")

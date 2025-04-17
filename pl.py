@@ -7,6 +7,9 @@ import lightning as L
 import torch
 import os 
 
+
+os.environ["CUDA_VISIBLE_DEVICES"] = "0"
+
 encoder = nn.Sequential(nn.Linear(28 * 28 , 64), nn.ReLU() , nn.Linear(64,3))
 #decode = nn.Sequential(nn.Linear(28 * 28 , 64) nn.Relu() , nn.Linear(64,3))
 decode = nn.Sequential(nn.Linear(3 , 64) , nn.ReLU() , nn.Linear(64 , 28 * 28))
