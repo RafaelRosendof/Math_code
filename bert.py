@@ -62,7 +62,7 @@ class MyData(Dataset):
         
         
 class SentimentalModule(L.LightningDataModule):
-    def __init__(self, train_df_path , test_df_path , batch_size=32 , max_len=128, num_workers=4):
+    def __init__(self, train_df_path , test_df_path , batch_size=64 , max_len=128, num_workers=4):
         self.train_df_path = train_df_path
         self.test_df_path = test_df_path
         self.batch_size = batch_size
@@ -256,7 +256,7 @@ class BERTSentimentClassifier(L.LightningModule):
         
         return {'test_loss': loss, 'preds': preds, 'labels': labels}
     
-    def test_epoch_end(self, outputs):
+    def on_test_epoch_end(self, outputs):
         # Aggregate predictions and calculate F1 score
         preds = torch.cat([x['preds'] for x in self.test_step_outputs])
         labels = torch.cat([x['labels'] for x in self.test_step_outputs])
@@ -298,16 +298,17 @@ def main():
     data_module = SentimentalModule(
         train_df_path=train_ph,
         test_df_path=test_ph,
-        batch_size=32,
+        batch_size=16,
         max_len=128
     )
     
     model = BERTSentimentClassifier(n_classes=3, learning_rate=2e-5)
     
     trainer = L.Trainer(
-        max_epochs=4,
+        max_epochs=1,
         accelerator="gpu", 
-        devices=1,
+        devices=2,
+        strategy="fsdp",
         precision="32",  
         callbacks=[
             L.pytorch.callbacks.ModelCheckpoint(
@@ -318,7 +319,7 @@ def main():
             ),
             L.pytorch.callbacks.EarlyStopping(
                 monitor="val_f1",
-                patience=2,
+                patience=4,
                 mode="max"
             )
         ]
@@ -326,6 +327,8 @@ def main():
     
     # Train the model
     trainer.fit(model, data_module)
+    
+    trainer.save_checkpoint("best_model.ckpt")
     
     # Test the model
     trainer.test(model, data_module)
