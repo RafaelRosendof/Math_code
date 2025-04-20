@@ -195,3 +195,58 @@ class LLM_model(L.LightningModule):
 ### Trainer and loggs function
 
 ### Main function
+
+def main():
+    train_path = "data.txt"
+    '''
+    train_df_path,
+    batch_size,
+    max_len,
+    num_workers,
+    model_tokenizer
+    '''
+    model_name = "facebook/llama" #adapt for your model
+
+    data_module = MyDataModule(
+        train_df_path=train_path,
+        batch_size = 16,
+        max_len=128,
+        num_workers=4,
+        model_tokenizer=model_name
+    )
+
+    model = LLM_model(
+        model_name=model_name,
+        lr = 1e-7,
+    )
+
+    trainer = L.Trainer(
+        max_epochs=20,
+        accelerator="gpu",
+        devices=2,
+        strategy="fsdp", #or DDP
+        precision="32", #or 16 by mix precision
+        callbacks=[
+            L.pytorch.callbacks.ModelCheckpoint(
+                monitor="val_f1",
+                mode="max",
+                save_top_k=1,
+                filename="{epoch}-"
+            ),
+            L.pytorch.callbacks.EarlyStopping(
+                monitor="val_f1",
+                patience=4,
+                mode="max"
+            )
+        ]
+    )
+
+    #maybe do not need the test trainer
+
+    trainer.fit(model , data_module)
+
+    trainer.save_checkpoint("LLM_myModel.ckpt")
+
+
+if __name__ == "__main__":
+    main()
