@@ -307,7 +307,8 @@ def main():
     trainer = L.Trainer(
         max_epochs=4,
         accelerator="gpu", 
-        devices=1,
+        devices=4,
+        strategy="fsdp",
         precision="32",  
         callbacks=[
             L.pytorch.callbacks.ModelCheckpoint(
