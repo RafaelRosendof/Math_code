@@ -360,8 +360,6 @@ def inference(model , tokenizer , text):
 if __name__ == "__main__":
     main()
     
-# Inference example
-# Load the tokenizer and model
     model = BERTSentimentClassifier.load_from_checkpoint("best_model.ckpt")
     tokenizer = AutoTokenizer.from_pretrained("bert-base-cased")
     text = "I love this product! It's amazing." 
