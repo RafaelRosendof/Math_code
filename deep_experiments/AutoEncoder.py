@@ -13,7 +13,7 @@ import numpy as np
 from sklearn.metrics import accuracy_score, f1_score 
 import torchvision.transforms as transforms
 
-def conv2d(in_chans , out_chan , kernel = 2 , stride = 2 , padding = 1):
+def conv2d(in_chans , out_chan , kernel = 4 , stride = 2 , padding = 1):
     
     return nn.Sequential(
         nn.Conv2d(
@@ -32,16 +32,22 @@ def conv2d(in_chans , out_chan , kernel = 2 , stride = 2 , padding = 1):
 class Encoder(nn.Module):
     def __init__(self, channels=1): #only gray chan
         super().__init__() 
-        self.conv1 = conv2d(channels , 128)
         
-        self.conv2 = conv2d(128 , 256)
-        
-        self.conv3 = conv2d(256 , 512)
-        
-        self.conv4 = conv2d(512 , 1024)
-        
-        self.lin = nn.Linear(1024 , 32) 
-        
+        self.conv1 = conv2d(channels, 128)
+        self.conv2 = conv2d(128, 256)
+        self.conv3 = conv2d(256, 512)
+        self.conv4 = conv2d(512, 1024)
+        self.linear = nn.Linear(1024, 16)
+
+    def forward(self, x):
+        x = self.conv1(x)  # (batch size, 128, 14, 14)
+        x = self.conv2(x)  # (bs, 256, 7, 7)
+        x = self.conv3(x)  # (bs, 512, 3, 3)
+        x = self.conv4(x)  # (bs, 1024, 1, 1)
+        # Keep batch dimension when flattening
+        x = self.linear(x.flatten(start_dim=1))  # (bs, 16)
+        return x
+    
         # (bs , 128 , 14 , 14)
         # (bs , 256 , 7 , 7)
         # (bs , 512 , 3 , 3)
@@ -49,12 +55,8 @@ class Encoder(nn.Module):
         
         # (bs , 32)
         #output should be a vector of size 32 from the encoder 
-    def forward(self , x):
-        x = self.conv1(x)
-        x = self.conv2(x) 
-        x = self.conv3(x)
-        x = self.lin(x.flatten(start_dim=1)) # [bs , 32]
-        return x
+
+    
     
     
 # for the decoder we need to use the transpose layer because ...
@@ -62,7 +64,7 @@ class Encoder(nn.Module):
 def conv_transpose_2d(
     in_chan,
     out_chan,
-    kernel=2,
+    kernel=3,
     stride=2,
     padding=1,
     output_padding=0,
@@ -91,34 +93,29 @@ def conv_transpose_2d(
 class Decoder(nn.Module):
     
     def __init__(self , out_chan=1):
-        
         super().__init__()
         
-        self.linear = nn.Linear(32 , 1024 * 1 * 1) 
-        
-        self.t_conv1 = conv_transpose_2d(1024 , 512)
-        self.t_conv2 = conv_transpose_2d(512 , 256 , output_padding=1)
-        self.t_conv3 = conv_transpose_2d(256 , 128 , out_chan=out_chan , with_act=False)
-        
-    def forward(self , x):
-        #get the batch size 
+        self.linear = nn.Linear(
+            16, 1024 * 4 * 4
+        )  # note it's reshaped in forward
+        self.t_conv1 = conv_transpose_2d(1024, 512)
+        self.t_conv2 = conv_transpose_2d(512, 256, output_padding=1)
+        self.t_conv3 = conv_transpose_2d(256, out_chan, output_padding=1)
+
+    def forward(self, x):
         bs = x.shape[0]
-        
-        x = self.linear(x) # -> gonna get (bs , 1024)
-        x = x.reshape((bs , 1024 , 1 , 1))
-        x = self.t_conv1(x) # 2x2 
-        x = self.t_conv2(x) # 11x11 
-        x = self.t_conv3(x) # 23x23
-        
-        x = F.interpolate(x, size=(28, 28), mode='bilinear', align_corners=False)
-        
-        return torch.tanh(x) #using the tan h to normalize images (-1 , 1)
-    
+        x = self.linear(x)  # (bs, 1024*4*4)
+        x = x.reshape((bs, 1024, 4, 4))  # (bs, 1024, 4, 4)
+        x = self.t_conv1(x)  # (bs, 512, 7, 7)
+        x = self.t_conv2(x)  # (bs, 256, 14, 14)
+        x = self.t_conv3(x)  # (bs, 1, 28, 28)
+        return x
+
 
 class AutoEncoderPL(L.LightningModule):
-    def __init__(self, learning_rate=1e-5):
-        super.__init__()
-        
+    def __init__(self , learning_rate=1e-3):
+        #super.__init__()
+        super(AutoEncoderPL, self).__init__()
         #load the 2 models 
         
         self.encoder = Encoder(channels=1)
@@ -162,6 +159,9 @@ class AutoEncoderPL(L.LightningModule):
     def on_validation_batch_end(self):
         self.validation_step_outputs=[]
         
+    def on_validation_batch_end(self, outputs, batch, batch_idx, dataloader_idx=0):
+    # This signature matches what Lightning expects
+        pass  
     def configure_optimizers(self):
         optim = torch.optim.Adam(self.parameters() , lr=self.hparams.learning_rate)
         scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
@@ -178,9 +178,10 @@ class AutoEncoderPL(L.LightningModule):
             }
         }
         
+        ################################ ENTENDER O MOTIVO DO ERRO DO KERNEL = 4 E KERNEL = 2 E KERNEL = 3 DA PARTE TRANSPOSE 
         
 class FashionMNISTDataModule(L.LightningDataModule):
-    def __init__(self, batch_size=64):
+    def __init__(self, batch_size=32):
         super().__init__()
         
         self.batch_size = batch_size
@@ -194,7 +195,10 @@ class FashionMNISTDataModule(L.LightningDataModule):
         # Download data if needed
         torchvision.datasets.FashionMNIST('./data', train=True, download=True)
         torchvision.datasets.FashionMNIST('./data', train=False, download=True)
-    
+        #torchvision.datasets.MNIST('./data', train=True, download=True)
+        #torchvision.datasets.MNIST('./data', train=True, download=True)
+        
+        
     def setup(self, stage=None):
         # Load datasets
         self.train_dataset = torchvision.datasets.FashionMNIST(
@@ -228,7 +232,7 @@ def main():
     data_module = FashionMNISTDataModule(batch_size=64)
     
     # Create model
-    model = AutoEncoderPL(learning_rate=1e-3)
+    model = AutoEncoderPL(learning_rate=1e-4)
     
     # Configure trainer with callbacks
     trainer = L.Trainer(
@@ -261,16 +265,7 @@ def main():
     #inference function bellow 
     
 def inference(image_path, model_path="AutoEncoder.ckpt"):
-    """
-    Perform inference with the trained autoencoder
-    
-    Args:
-        image_path: Path to the image file
-        model_path: Path to the saved model checkpoint
-    
-    Returns:
-        Original image and reconstructed image as tensors
-    """
+
     # Load the model
     model = AutoEncoderPL.load_from_checkpoint(model_path)
     model.eval()
@@ -283,12 +278,11 @@ def inference(image_path, model_path="AutoEncoder.ckpt"):
         transforms.Normalize((0.5,), (0.5,))
     ])
     
-    # Either load a local image or use a Fashion MNIST test image
     try:
         image = transforms.Image.open(image_path)
         image = transform(image).unsqueeze(0)  # Add batch dimension
     except:
-        # If image_path is an index, load from test set
+        
         try:
             idx = int(image_path)
             test_set = torchvision.datasets.FashionMNIST('./data', train=False, download=True)
