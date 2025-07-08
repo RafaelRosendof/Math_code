@@ -297,5 +297,7 @@ def inference(image_path, model_path="AutoEncoder.ckpt"):
     
     return image, reconstructed
 
+
+
 if __name__ == "__main__":
     main()
