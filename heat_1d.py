@@ -9,7 +9,7 @@ plt.rcParams.update({'font.size' : 18})
 
 a = 1 #constante D
 L = 100 # tamanho do domínio tempo d(x , t)
-N = 1000 #pontos discretos afinal o mundo é discreto
+N = 500 #pontos discretos afinal o mundo é discreto
 dx = L/N # ao que vamos derivar
 
 x = np.arange(-L/2 , L/2 , dx) #domínio do X
@@ -27,7 +27,7 @@ u0hat_ri = np.concatenate((u0hat.real , u0hat.imag))
 
 # simulate in Fourier
 dt = 0.1
-t = np.arange(0 , 1000 , dt) #vetor de tempo
+t = np.arange(0 , 900 , dt) #vetor de tempo
 
 def rhsHeat(uhat_ri , t , ft , a):
     uhat = uhat_ri[:N] + (1j) * uhat_ri[N:]
@@ -50,7 +50,7 @@ u = u.real
 fig = plt.figure()
 
 ax = fig.add_subplot(111 , projection='3d')
-plt.set_cmap('jet_r')
+plt.set_cmap('viridis')
 u_plot = u[0: -1 : 10,:]
 for j in range(u_plot.shape[0]):
     ys = j*np.ones(u_plot.shape[1])

@@ -3,10 +3,10 @@
 #include <cuda_runtime.h>
 #include <cufft.h>
 
-//define N 1024            // número de pontos espaciais
-//define T_FINAL 10.0      // tempo final em segundos
-//define DT 0.0001         // passo de tempo
-//define D 0.1f            // coeficiente de difusão
+//#define N 1024            // número de pontos espaciais
+//#define T_FINAL 10.0      // tempo final em segundos
+//#define DT 0.0001         // passo de tempo
+//#define D 0.1f            // coeficiente de difusão
 
 __global__ void apply_diffusion(cufftComplex* u_hat, int N, float DT, float D) {
     int k = blockIdx.x * blockDim.x + threadIdx.x;
