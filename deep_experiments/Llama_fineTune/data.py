@@ -21,24 +21,37 @@ def clean_text(text):
 #### FAZER UM NOTEBOOK PARA EXPLORAR OS DADOS #### 
 
 ### Feito 
-
 class CustomDataset(Dataset):
-    def __init__(self, file_paths , tokenizer , max_length=2048):
-        self.file_pahts = file_paths
+    def __init__(self, file_paths, tokenizer, max_length=2048):
+        # Corrigido um pequeno erro de digitação de 'file_pahts' para 'file_paths'
+        self.file_paths = file_paths
         self.tokenizer = tokenizer
         self.max_length = max_length
 
     def __len__(self):
-        return len(self.file_pahts)
+        return len(self.file_paths)
     
-    # abre, lê e processa um único arquivo de texto
+
+
     def __getitem__(self, idx):
         file_path = self.file_paths[idx]
+        text = ""
+        try:
+            # Tenta abrir com a codificação padrão UTF-8
+            with open(file_path, 'r', encoding='utf-8') as file:
+                text = file.read()
+        except UnicodeDecodeError:
+            # Se falhar, tenta com uma codificação alternativa como 'latin-1'
+            print(f"Aviso: O arquivo {file_path} não é UTF-8. Tentando com latin-1.")
+            with open(file_path, 'r', encoding='latin-1') as file:
+                text = file.read()
 
-        with open(file_path , 'r' , encoding='utf-8') as file:
-            text = file.read()
+            #### 
+
+                
         text = clean_text(text)
-
+    
+        # O resto do seu código de tokenização continua igual...
         inputs = self.tokenizer(
             text,
             max_length=self.max_length,
@@ -46,11 +59,18 @@ class CustomDataset(Dataset):
             padding='max_length',
             return_tensors='pt'
         )
-        inputs = {key: val.squeeze(0) for key, val in inputs.items()}
-        return inputs
+    
+        inputs['labels'] = inputs['input_ids'].clone()
+        
+        # IMPORTANTE: Mantenha esta linha para remover a dimensão extra
+        final_inputs = {key: val.squeeze(0) for key, val in inputs.items()}
+        
+        return final_inputs
+       # return inputs
+
 
 class MyDataModule(L.LightningDataModule):
-    def __init__(self, train_path, model_name="meta-llama/Llama-2-7b-hf", batch_size=4, max_len=2048, num_workers=4):
+    def __init__(self, train_path, model_name="meta-llama/Llama-3.2-1B", batch_size=4, max_len=2048, num_workers=4):
         super().__init__()
         
         self.save_hyperparameters()
@@ -107,4 +127,4 @@ class MyDataModule(L.LightningDataModule):
 
     # Não tenho teste, então não preciso implementar esse método
     def test_dataloader(self):
-        pass 
+        pass
