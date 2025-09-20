@@ -38,4 +38,6 @@ folder.save_token(token)
 trainer.push_to_hub('Rafaelrosendo1/whisper_small_teste')
 print('Trained model uploaded to the Hugging Face Hub')
 
+CertUtil -hashfile nome SHA512 | find /i /v "sha512" | find /i /v "certutil" > temp.txt
+
 """
