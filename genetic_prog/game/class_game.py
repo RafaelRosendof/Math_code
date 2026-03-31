@@ -33,6 +33,7 @@ class LabGame:
         self.goal_pos = [self.width - 2, self.height - 2]
         self.done = False
         self.kill = False
+        self.steps_num = 0
 
         return self._get_state()
 
@@ -84,16 +85,29 @@ class LabGame:
             self.agent_pos = [new_x, new_y]
 
         reward = -0.01
+        
+        print(f"Space {self.maze[new_y][new_x]} | Agent Pos: {self.agent_pos} | Goal Pos: {self.goal_pos}")
 
-        if self.maze[new_x][new_y] == 1:
-            reward = -10.0
-            #self.done = True
+        if not (0 <= new_x < self.width and 0 <= new_y < self.height):
             self.kill = True
-            # return self._get_state(), reward, self.done, self.kill
-
+            return self._get_state(), -10.0, self.done, self.kill
+        
+        #if self.maze[new_x][new_y] == 1:
+        #    reward = -10.0
+        #    #self.done = True
+        #    self.kill = True
+        #    # return self._get_state(), reward, self.done, self.kill
+        #else:
+        #    self.agent_pos = [new_x, new_y]
+        #    reward = -0.01
+        
+        
+        
         if self.agent_pos == self.goal_pos:
             reward = 1.0
             self.done = True
+            
+        self.steps_num += 1
 
         return self._get_state(), reward, self.done, self.kill
 
